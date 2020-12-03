@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+# encoding: utf-8
+import os
+if __name__ == '__main__':
+    from PyInstaller.__main__ import run
+    opts = ['calculate_chaiyou.py', '-F', '--hidden-import=queue -w -F $FileName$', '--icon=car_pollution.ico', '--noconsole']#'-F'
+    run(opts)
