@@ -1,0 +1,809 @@
+creator:Jing Liu
+email:liu_xxxi@163.com
+
+#!/usr/bin/env python
+# encoding: utf-8
+import sys
+import base64
+import re
+import datetime
+import time
+
+from openpyxl import load_workbook,Workbook
+from openpyxl.styles import Border,Side
+from openpyxl.styles import Font
+from openpyxl.styles import PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
+
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QApplication,QSplashScreen,QFileDialog,QMainWindow,QTableWidget
+from PyQt5_exercise.calculate_chaiyou_pollution import Ui_sss
+from PyQt5_exercise import resource
+from PyQt5.QtGui import QRegExpValidator,QFont
+from PyQt5 import QtGui
+from PyQt5.QtCore import QRegExp,Qt
+from PyQt5 import QtCore
+
+class CalculatorWindow(QtWidgets.QMainWindow,Ui_sss):
+
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.show()
+
+        # 禁止最大化按钮
+        self.setFixedSize(self.width(), self.height())
+
+        # 设置flags使得内容无法被编辑
+
+        #设置groupbox 边框颜色
+        self.groupBox_3.setStyleSheet("QGroupBox{border:1px solid blue}")
+
+        #设置label背景颜色
+        self.label_34.setStyleSheet("background-color:CornflowerBlue")
+        self.label_35.setStyleSheet("background-color:CornflowerBlue")
+
+        self.label_13.setStyleSheet("color:RoyalBlue")
+        self.label_23.setStyleSheet("color:RoyalBlue")
+        self.label_37.setStyleSheet("color:RoyalBlue")
+
+        # 设置lineEdit输入形式只能是数字,且小数点最多三位
+        number_rx = QRegExp("-?(([1-9]\d*)|0)([\.][1-9]{1,3})?")
+        self.lineEdit_P1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_P2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_T1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_T2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_pi.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_rou.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_h.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_W2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_V1.setValidator(QRegExpValidator(number_rx))
+
+        self.lineEdit35_SO21.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_SO22.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_SO23.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_NOx1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_NOx2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_NOx3.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_CO1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_CO2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_CO3.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_PM1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_PM2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit35_PM3.setValidator(QRegExpValidator(number_rx))
+
+        self.lineEdit_SO21.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_SO22.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_SO23.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_NOx1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_NOx2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_NOx3.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_CO1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_CO2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_CO3.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_PM1.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_PM2.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_PM3.setValidator(QRegExpValidator(number_rx))
+
+        self.lineEdit_PM_Cd.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_SO2_Cd.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_NOx_Cd.setValidator(QRegExpValidator(number_rx))
+        self.lineEdit_CO_Cd.setValidator(QRegExpValidator(number_rx))
+
+        #定义固定输入值
+        self.lineEdit_P2.setText('101.325')
+        self.lineEdit_T2.setText('298.15')
+
+        # 编辑 input button
+        self.pushButton_input.clicked.connect(self.input_click)
+
+        # 编辑 Calculation button
+        self.pushButton_calcu.clicked.connect(self.calculate_click)
+
+        # 编辑打印按钮
+        self.pushButton_output.clicked.connect(self.print_click)
+
+        #编辑重置按钮
+        self.Reset.clicked.connect(self.reset_click)
+
+    #数据输入
+    def input_click(self):
+        dir_path = QFileDialog.getOpenFileName(self, "请选择打开文件", "C:\\")
+
+        # 判断输入文件后缀是否正确
+        if (dir_path[0] == ''):
+            pass
+        elif ((str(dir_path[0].split('.')[-1]) != 'xlsx') and (dir_path[0] != '')):
+            QtWidgets.QMessageBox.critical(self, "错误", "   文件格式不正确 \n 请选择'xlsx'格式文件")
+        else:
+            #单元格内容整合
+            wb = load_workbook(dir_path[0])
+            ws = wb.active
+            pollution_input = []
+            data1 = []
+            data2 = []
+            manage_data = []
+            for row in ws['C14:F19']:
+                for cell in row:
+                    pollution_input.append(bool(re.search("^(-?\d+)(\.\d+)?$", str(cell.value))))
+            for row in ws['B5:B9']:
+                for cell in row:
+                    data1.append(bool(re.search("^(-?\d+)(\.\d+)?$", str(cell.value))))
+            for row in ws['D5:D8']:
+                for cell in row:
+                    data2.append(bool(re.search("^(-?\d+)(\.\d+)?$", str(cell.value))))
+            for row in ws['B23:B26']:
+                for cell in row:
+                    manage_data.append(bool(re.search("^(-?\d+)(\.\d+)?$", str(cell.value))))
+
+
+            if (False in pollution_input) or (False in data1) or \
+                (False in data2) or (False in manage_data):
+                QtWidgets.QMessageBox.critical(self, "错误", "输入数据格式有错误，请检查输入表格")
+            else:
+                self.lineEdit_V1.setText(str(str(ws.cell(5, 2).value)))
+                self.lineEdit_T1.setText(str(str(ws.cell(6, 2).value)))
+                self.lineEdit_P1.setText(str(str(ws.cell(7, 2).value)))
+                self.lineEdit_P2.setText(str(str(ws.cell(8, 2).value)))
+                self.lineEdit_T2.setText(str(str(ws.cell(9, 2).value)))
+
+                self.lineEdit_h.setText(str(str(ws.cell(5, 4).value)))
+                self.lineEdit_pi.setText(str(str(ws.cell(6, 4).value)))
+                self.lineEdit_W2.setText(str(str(ws.cell(7, 4).value)))
+                self.lineEdit_rou.setText(str(str(ws.cell(8, 4).value)))
+
+                self.lineEdit35_NOx1.setText(str(str(ws.cell(14, 3).value)))
+                self.lineEdit35_NOx2.setText(str(str(ws.cell(15, 3).value)))
+                self.lineEdit35_NOx3.setText(str(str(ws.cell(16, 3).value)))
+                self.lineEdit_NOx1.setText(str(str(ws.cell(17, 3).value)))
+                self.lineEdit_NOx2.setText(str(str(ws.cell(18, 3).value)))
+                self.lineEdit_NOx3.setText(str(str(ws.cell(19, 3).value)))
+
+                self.lineEdit35_SO21.setText(str(str(ws.cell(14, 4).value)))
+                self.lineEdit35_SO22.setText(str(str(ws.cell(15, 4).value)))
+                self.lineEdit35_SO23.setText(str(str(ws.cell(16, 4).value)))
+                self.lineEdit_SO21.setText(str(str(ws.cell(17, 4).value)))
+                self.lineEdit_SO22.setText(str(str(ws.cell(18, 4).value)))
+                self.lineEdit_SO23.setText(str(str(ws.cell(19, 4).value)))
+
+                self.lineEdit35_CO1.setText(str(str(ws.cell(14, 5).value)))
+                self.lineEdit35_CO2.setText(str(str(ws.cell(15, 5).value)))
+                self.lineEdit35_CO3.setText(str(str(ws.cell(16, 5).value)))
+                self.lineEdit_CO1.setText(str(str(ws.cell(17, 5).value)))
+                self.lineEdit_CO2.setText(str(str(ws.cell(18, 5).value)))
+                self.lineEdit_CO3.setText(str(str(ws.cell(19, 5).value)))
+
+                self.lineEdit35_PM1.setText(str(str(ws.cell(14, 6).value)))
+                self.lineEdit35_PM2.setText(str(str(ws.cell(15, 6).value)))
+                self.lineEdit35_PM3.setText(str(str(ws.cell(16, 6).value)))
+                self.lineEdit_PM1.setText(str(str(ws.cell(17, 6).value)))
+                self.lineEdit_PM2.setText(str(str(ws.cell(18, 6).value)))
+                self.lineEdit_PM3.setText(str(str(ws.cell(19, 6).value)))
+
+                self.lineEdit_NOx_Cd.setText(str(str(ws.cell(23, 2).value)))
+                self.lineEdit_SO2_Cd.setText(str(str(ws.cell(24, 2).value)))
+                self.lineEdit_CO_Cd.setText(str(str(ws.cell(25, 2).value)))
+                self.lineEdit_PM_Cd.setText(str(str(ws.cell(26, 2).value)))
+
+    #计算
+    def calculate_click(self):
+        # 必要输入项如果为空，则返回错误框
+        # 检查基本输入内容
+        if len(self.lineEdit_T1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_T2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_V1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_P1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_P2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_pi.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_rou.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_W2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        elif len(self.lineEdit_h.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "基本参数数据不全")
+        #检查污染物浓度输入
+        elif len(self.lineEdit35_SO21.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_SO22.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_SO23.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_PM1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_PM2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_PM3.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_CO1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_CO2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_CO3.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_NOx1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_NOx2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit35_NOx3.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+
+        # 检查污染物浓度输入
+        elif len(self.lineEdit_SO21.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_SO22.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_SO23.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_PM1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_PM2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_PM3.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_CO1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_CO2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_CO3.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_NOx1.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_NOx2.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+        elif len(self.lineEdit_NOx3.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "污染物浓度数据不全")
+
+        # 检查治理成本输入
+        elif len(self.lineEdit_NOx_Cd.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "治理成本数据不全")
+        elif len(self.lineEdit_SO2_Cd.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "治理成本数据不全")
+        elif len(self.lineEdit_PM_Cd.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "治理成本数据不全")
+        elif len(self.lineEdit_CO_Cd.text()) == 0:
+            QtWidgets.QMessageBox.critical(self, "错误", "治理成本数据不全")
+
+        # 必要输入项都正确 则进行结果输出
+        else:
+            V1 = float(self.lineEdit_V1.text())
+            T1 = float(self.lineEdit_T1.text())
+            P1 = float(self.lineEdit_P1.text())
+            P2 = float(self.lineEdit_P2.text())
+            T2 = float(self.lineEdit_T2.text())
+
+            # 35#柴油下污染物排放浓度
+            CO_daisu_1 = float(self.lineEdit35_CO1.text())
+            CO_jiasu_1 = float(self.lineEdit35_CO2.text())
+            CO_dengsu_1 = float(self.lineEdit35_CO3.text())
+
+            NOx_daisu_1 = float(self.lineEdit35_NOx1.text())
+            NOx_jiasu_1 = float(self.lineEdit35_NOx2.text())
+            NOx_dengsu_1 = float(self.lineEdit35_NOx3.text())
+
+            SO2_daisu_1 = float(self.lineEdit35_SO21.text())
+            SO2_jiasu_1 = float(self.lineEdit35_SO22.text())
+            SO2_dengsu_1 = float(self.lineEdit35_SO23.text())
+
+            PM_daisu_1 = float(self.lineEdit35_PM1.text())
+            PM_jiasu_1 = float(self.lineEdit35_PM2.text())
+            PM_dengsu_1 = float(self.lineEdit35_PM3.text())
+
+            # 掺杂柴油下污染物排放浓度
+            CO_daisu_2 = float(self.lineEdit_CO1.text())
+            CO_jiasu_2 = float(self.lineEdit_CO2.text())
+            CO_dengsu_2 = float(self.lineEdit_CO3.text())
+
+            NOx_daisu_2 = float(self.lineEdit_NOx1.text())
+            NOx_jiasu_2 = float(self.lineEdit_NOx2.text())
+            NOx_dengsu_2 = float(self.lineEdit_NOx3.text())
+
+            SO2_daisu_2 = float(self.lineEdit_SO21.text())
+            SO2_jiasu_2 = float(self.lineEdit_SO22.text())
+            SO2_dengsu_2 = float(self.lineEdit_SO23.text())
+
+            PM_daisu_2 = float(self.lineEdit_PM1.text())
+            PM_jiasu_2 = float(self.lineEdit_PM2.text())
+            PM_dengsu_2 = float(self.lineEdit_PM3.text())
+
+            # 油耗参数
+            h = float(self.lineEdit_h.text())
+            W2 = float(self.lineEdit_W2.text())
+            rou = float(self.lineEdit_rou.text())
+
+            # 环境敏感系数
+            pi = float(self.lineEdit_pi.text())
+
+            # 污染物治理成本
+            CO_Cd = float(self.lineEdit_CO_Cd.text())
+            NOx_Cd = float(self.lineEdit_NOx_Cd.text())
+            SO2_Cd = float(self.lineEdit_SO2_Cd.text())
+            PM_Cd = float(self.lineEdit_PM_Cd.text())
+
+            '''污染物排放量计算'''
+            # 理想状态气体体积计算
+            V2 = P1 * V1 * T2 / (T1 + 273) / P2
+
+            # 单位时间产生烟气量计算
+            G = V2 * 60 / 1000
+
+            # 35#柴油污染物排放量计算
+            CO_out1_1 = CO_daisu_1 * 28 / 22.4 * G / h
+            CO_out1_2 = CO_jiasu_1 * 28 / 22.4 * G / h
+            CO_out1_3 = CO_dengsu_1 * 28 / 22.4 * G / h
+
+            NOx_out1_1 = NOx_daisu_1 * 44.4 / 22.4 * G / h
+            NOx_out1_2 = NOx_jiasu_1 * 44.4 / 22.4 * G / h
+            NOx_out1_3 = NOx_dengsu_1 * 44.4 / 22.4 * G / h
+
+            SO2_out1_1 = SO2_daisu_1 * 64 / 22.4 * G / h
+            SO2_out1_2 = SO2_jiasu_1 * 64 / 22.4 * G / h
+            SO2_out1_3 = SO2_dengsu_1 * 64 / 22.4 * G / h
+
+            PM_out1_1 = PM_daisu_1 * G / h
+            PM_out1_2 = PM_jiasu_1 * G / h
+            PM_out1_3 = PM_dengsu_1 * G / h
+
+            # 掺杂柴油污染物排放量计算
+            CO_out2_1 = CO_daisu_2 * 28 / 22.4 * G / h
+            CO_out2_2 = CO_jiasu_2 * 28 / 22.4 * G / h
+            CO_out2_3 = CO_dengsu_2 * 28 / 22.4 * G / h
+
+            NOx_out2_1 = NOx_daisu_2 * 44.4 / 22.4 * G / h
+            NOx_out2_2 = NOx_jiasu_2 * 44.4 / 22.4 * G / h
+            NOx_out2_3 = NOx_dengsu_2 * 44.4 / 22.4 * G / h
+
+            SO2_out2_1 = SO2_daisu_2 * 64 / 22.4 * G / h
+            SO2_out2_2 = SO2_jiasu_2 * 64 / 22.4 * G / h
+            SO2_out2_3 = SO2_dengsu_2 * 64 / 22.4 * G / h
+
+            PM_out2_1 = PM_daisu_2 * G / h
+            PM_out2_2 = PM_jiasu_2 * G / h
+            PM_out2_3 = PM_dengsu_2 * G / h
+
+            # 35#柴油污染物总排放量
+            CO_result2_11 = CO_out1_1 * 0.000001 * (W2 * 1000 / 0.86)
+            CO_result2_21 = CO_out1_2 * 0.000001 * (W2 * 1000 / 0.86)
+            CO_result2_31 = CO_out1_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            NOx_result2_11 = NOx_out1_1 * 0.000001 * (W2 * 1000 / 0.86)
+            NOx_result2_21 = NOx_out1_2 * 0.000001 * (W2 * 1000 / 0.86)
+            NOx_result2_31 = NOx_out1_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            SO2_result2_11 = SO2_out1_1 * 0.000001 * (W2 * 1000 / 0.86)
+            SO2_result2_21 = SO2_out1_2 * 0.000001 * (W2 * 1000 / 0.86)
+            SO2_result2_31 = SO2_out1_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            PM_result2_11 = PM_out1_1 * 0.000001 * (W2 * 1000 / 0.86)
+            PM_result2_21 = PM_out1_2 * 0.000001 * (W2 * 1000 / 0.86)
+            PM_result2_31 = PM_out1_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            # 掺杂柴油污染物总排放量
+            CO_result2_12 = CO_out2_1 * 0.000001 * (W2 * 1000 / 0.86)
+            CO_result2_22 = CO_out2_2 * 0.000001 * (W2 * 1000 / 0.86)
+            CO_result2_32 = CO_out2_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            NOx_result2_12 = NOx_out2_1 * 0.000001 * (W2 * 1000 / 0.86)
+            NOx_result2_22 = NOx_out2_2 * 0.000001 * (W2 * 1000 / 0.86)
+            NOx_result2_32 = NOx_out2_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            SO2_result2_12 = SO2_out2_1 * 0.000001 * (W2 * 1000 / 0.86)
+            SO2_result2_22 = SO2_out2_2 * 0.000001 * (W2 * 1000 / 0.86)
+            SO2_result2_32 = SO2_out2_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            PM_result2_12 = PM_out2_1 * 0.000001 * (W2 * 1000 / 0.86)
+            PM_result2_22 = PM_out2_2 * 0.000001 * (W2 * 1000 / 0.86)
+            PM_result2_32 = PM_out2_3 * 0.000001 * (W2 * 1000 / 0.86)
+
+            # 各污染物排放总量计算
+            CO_result2 = 0
+            if CO_result2_11 < CO_result2_12:
+                CO_result2 = CO_result2 + (CO_result2_12 - CO_result2_11)
+            if CO_result2_21 < CO_result2_22:
+                CO_result2 = CO_result2 + (CO_result2_22 - CO_result2_21)
+            if CO_result2_31 < CO_result2_32:
+                CO_result2 = CO_result2 + (CO_result2_32 - CO_result2_31)
+
+            NOx_result2 = 0
+            if NOx_result2_11 < NOx_result2_12:
+                NOx_result2 = NOx_result2 + (NOx_result2_12 - NOx_result2_11)
+            if NOx_result2_21 < NOx_result2_22:
+                NOx_result2 = NOx_result2 + (NOx_result2_22 - NOx_result2_21)
+            if NOx_result2_31 < NOx_result2_32:
+                NOx_result2 = NOx_result2 + (NOx_result2_32 - NOx_result2_31)
+
+            SO2_result2 = 0
+            if SO2_result2_11 < SO2_result2_12:
+                SO2_result2 = SO2_result2 + (SO2_result2_12 - SO2_result2_11)
+            if SO2_result2_21 < SO2_result2_22:
+                SO2_result2 = SO2_result2 + (SO2_result2_22 - SO2_result2_21)
+            if SO2_result2_31 < SO2_result2_32:
+                SO2_result2 = SO2_result2 + (SO2_result2_32 - SO2_result2_31)
+
+            PM_result2 = 0
+            if PM_result2_11 < PM_result2_12:
+                PM_result2 = PM_result2 + (PM_result2_12 - PM_result2_11)
+            if PM_result2_21 < PM_result2_22:
+                PM_result2 = PM_result2 + (PM_result2_22 - PM_result2_21)
+            if PM_result2_31 < PM_result2_32:
+                PM_result2 = PM_result2 + (PM_result2_32 - PM_result2_31)
+
+            CO_result2=round(CO_result2,3)
+            NOx_result2 = round(NOx_result2, 3)
+            SO2_result2 = round(SO2_result2, 3)
+            PM_result2 = round(PM_result2, 3)
+
+            pollution_sum2 = round((CO_result2 + NOx_result2 + SO2_result2 + PM_result2),3)
+
+            '''虚拟成本计算'''
+            CO_2 = round((CO_Cd * CO_result2 * pi/1000),2)
+            NOx_2 = round((NOx_Cd * NOx_result2 * pi/1000),2)
+            SO2_2 = round((SO2_Cd * SO2_result2 * pi/1000),2)
+            PM_2 = round((PM_Cd * PM_result2 * pi/1000),2)
+            result2 = round((CO_2 + NOx_2 + SO2_2 + PM_2),2)
+
+            # 结果写入
+            self.tableWidget_case1.setItem(0, 0, QtWidgets.QTableWidgetItem(str(NOx_result2)))
+            self.tableWidget_case1.setItem(1, 0, QtWidgets.QTableWidgetItem(str(SO2_result2)))
+            self.tableWidget_case1.setItem(2, 0, QtWidgets.QTableWidgetItem(str(CO_result2)))
+            self.tableWidget_case1.setItem(3, 0, QtWidgets.QTableWidgetItem(str(PM_result2)))
+            self.tableWidget_case1.setItem(4, 0, QtWidgets.QTableWidgetItem(str(pollution_sum2)))
+            self.tableWidget_case1.setItem(0, 1, QtWidgets.QTableWidgetItem(str(NOx_2)))
+            self.tableWidget_case1.setItem(1, 1, QtWidgets.QTableWidgetItem(str(SO2_2)))
+            self.tableWidget_case1.setItem(2, 1, QtWidgets.QTableWidgetItem(str(CO_2)))
+            self.tableWidget_case1.setItem(3, 1, QtWidgets.QTableWidgetItem(str(PM_2)))
+            self.tableWidget_case1.setItem(4, 1, QtWidgets.QTableWidgetItem(str(result2)))
+
+    #保存结果文件以及输入数据
+    def print_click(self):
+        dir_path = QFileDialog.getSaveFileName(self, "请选择保存文件路径和文件名", "C:\\")
+
+        # 判断输出文件后缀是否正确
+        if (dir_path[0] == ''):
+            pass
+        elif (str(dir_path[0].split('.')[-1]) != 'xlsx') :
+            QtWidgets.QMessageBox.critical(self, "错误", " 输入格式不正确 \n 请输入'xlsx'格式")
+
+        else:
+            self.textEdit_output.setText(str(dir_path[0]))
+
+            #开始输出结果，输出excel包含输入数据，输出数据以及时间
+            wb1 = Workbook(dir_path[0])
+            wb1.save(dir_path[0])
+            wb = load_workbook(dir_path[0])
+            ws = wb.active
+
+            #制作合并单元格部分
+            ws.merge_cells('A2:D2')
+            ws.merge_cells('A4:D4')
+            ws.merge_cells('A12:F12')
+            ws.merge_cells('A22:B22')
+            ws.merge_cells('A29:C29')
+
+            #设置合并单元格样式并写入文本
+            font1 = Font(size=14, bold=True, name='宋体')
+            ws['A2'].font = font1
+            ws['A2'] = "创建时间:"+ datetime.datetime.now().strftime('%Y-%m-%d')
+
+            font2 = Font(size=14, name='仿宋')
+            ws['A4'].font = font2
+            ws['A12'].font = font2
+            ws['A22'].font = font2
+            ws['A29'].font = font2
+
+            ws['A4'] = "基本参数输入"
+            ws['A12'] = "污染物浓度输入参数"
+            ws['A22'] = "治理成本输入参数"
+            ws['A29'] = "计算结果"
+
+            #添加背景颜色及列高
+            fill2 = PatternFill(patternType="solid", start_color="99CCFF")
+            fill1 = PatternFill(patternType="solid", start_color="B0C4DE")
+            ws['A4'].fill = fill1
+            ws['A12'].fill = fill1
+            ws['A22'].fill = fill1
+            ws['A29'].fill = fill2
+
+            ws.row_dimensions[4].height = 24
+            ws.row_dimensions[12].height = 24
+            ws.row_dimensions[22].height = 24
+            ws.row_dimensions[29].height = 24
+
+            #基本参数输入数据写入
+            ws['A5'] = self.label_2.text()
+            ws['A6'] = self.label_4.text()
+            ws['A7'] = self.label_3.text()
+            ws['A8'] = self.label_6.text()
+            ws['A9'] = self.label_7.text()
+
+            ws['C5'] = self.label_10.text()
+            ws['C6'] = self.label_8.text()
+            ws['C7'] = self.label_11.text()
+            ws['C8'] = self.label_12.text()
+
+            ws['B5'] = self.lineEdit_V1.text()
+            ws['B6'] = self.lineEdit_T1.text()
+            ws['B7'] = self.lineEdit_P1.text()
+            ws['B8'] = self.lineEdit_P2.text()
+            ws['B9'] = self.lineEdit_T2.text()
+
+            ws['D5'] = self.lineEdit_h.text()
+            ws['D6'] = self.lineEdit_pi.text()
+            ws['D7'] = self.lineEdit_W2.text()
+            ws['D8'] = self.lineEdit_rou.text()
+
+            #污染物浓度参数数据写入
+            ws.merge_cells('A14:A16')
+            ws.merge_cells('A17:A19')
+            ws['A14'] = self.label_34.text()
+            ws['A17'] = self.label_35.text()
+
+            ws['B14'] = self.label_27.text()
+            ws['B15'] = self.label_28.text()
+            ws['B16'] = self.label_29.text()
+            ws['B17'] = self.label_33.text()
+            ws['B18'] = self.label_36.text()
+            ws['B19'] = self.label_32.text()
+
+            ws['C13'] = self.label_25.text()
+            ws['D13'] = self.label_26.text()
+            ws['E13'] = self.label_30.text()
+            ws['F13'] = self.label_31.text()
+
+            ws['C14'] = self.lineEdit35_NOx1.text()
+            ws['C15'] = self.lineEdit35_NOx2.text()
+            ws['C16'] = self.lineEdit35_NOx3.text()
+            ws['C17'] = self.lineEdit_NOx1.text()
+            ws['C18'] = self.lineEdit_NOx2.text()
+            ws['C19'] = self.lineEdit_NOx3.text()
+
+            ws['D14'] = self.lineEdit35_SO21.text()
+            ws['D15'] = self.lineEdit35_SO22.text()
+            ws['D16'] = self.lineEdit35_SO23.text()
+            ws['D17'] = self.lineEdit_SO21.text()
+            ws['D18'] = self.lineEdit_SO22.text()
+            ws['D19'] = self.lineEdit_SO23.text()
+
+            ws['E14'] = self.lineEdit35_CO1.text()
+            ws['E15'] = self.lineEdit35_CO2.text()
+            ws['E16'] = self.lineEdit35_CO3.text()
+            ws['E17'] = self.lineEdit_CO1.text()
+            ws['E18'] = self.lineEdit_CO2.text()
+            ws['E19'] = self.lineEdit_CO3.text()
+
+            ws['F14'] = self.lineEdit35_PM1.text()
+            ws['F15'] = self.lineEdit35_PM2.text()
+            ws['F16'] = self.lineEdit35_PM3.text()
+            ws['F17'] = self.lineEdit_PM1.text()
+            ws['F18'] = self.lineEdit_PM2.text()
+            ws['F19'] = self.lineEdit_PM3.text()
+
+            #治理成本写入
+            ws['A23'] = self.label_16.text()
+            ws['A24'] = self.label_17.text()
+            ws['A25'] = self.label_14.text()
+            ws['A26'] = self.label_15.text()
+            ws['B23'] = self.lineEdit_NOx_Cd.text()
+            ws['B24'] = self.lineEdit_SO2_Cd.text()
+            ws['B25'] = self.lineEdit_CO_Cd.text()
+            ws['B26'] = self.lineEdit_PM_Cd.text()
+
+            #结果写入
+            # 得到行列数
+            rows = self.tableWidget_case1.rowCount()
+            cols = self.tableWidget_case1.columnCount()
+            # 获取数值
+            for m in range(31, 35 + 1):
+                for n in range(2, 3 + 1):
+                    ws.cell(m, n).value = self.tableWidget_case1.item(m-31, n-2).text()
+            # 获取表头
+            columns_1 = []
+            for cols_1 in range(cols):
+                x = self.tableWidget_case1.horizontalHeaderItem(cols_1).text()
+                columns_1.append(x)
+            index_1 = []
+            for ind_1 in range(rows):
+                y = self.tableWidget_case1.verticalHeaderItem(ind_1).text()
+                index_1.append(y)
+            ws['B30'] = columns_1[0]
+            ws['C30'] = columns_1[1]
+
+            ws['A31'] = index_1[0]
+            ws['A32'] = index_1[1]
+            ws['A33'] = index_1[2]
+            ws['A34'] = index_1[3]
+            ws['A35'] = index_1[4]
+
+            #边框线设置
+            thin = Side(border_style="thin")
+            border_left = Border(left=thin)
+            border_right = Border(right=thin)
+            border_all = Border(top=thin,bottom=thin,right=thin,left=thin)
+            border_bottom = Border(bottom=thin)
+            border_left_bottom = Border(bottom=thin,left=thin)
+            border_right_bottom = Border(bottom=thin, right=thin)
+
+            #下边框设置
+            for row in tuple(ws['B9:C9']):
+                for cell in row:
+                    cell.border = border_bottom
+            for row in tuple(ws['B19:E19']):
+                for cell in row:
+                    cell.border = border_bottom
+            ws['B35'].border = border_bottom
+
+            #全边框设置
+            for row in tuple(ws['A4:D4']):
+                for cell in row:
+                    cell.border = border_all
+            for row in tuple(ws['A12:F12']):
+                for cell in row:
+                    cell.border = border_all
+            for row in tuple(ws['A22:B22']):
+                for cell in row:
+                    cell.border = border_all
+            for row in tuple(ws['A29:C29']):
+                for cell in row:
+                    cell.border = border_all
+
+            #右边框设置
+            for row in tuple(ws['D5:D8']):
+                for cell in row:
+                    cell.border = border_right
+            for row in tuple(ws['F13:F18']):
+                for cell in row:
+                    cell.border = border_right
+            for row in tuple(ws['B23:B25']):
+                for cell in row:
+                    cell.border = border_right
+            for row in tuple(ws['C30:C34']):
+                for cell in row:
+                    cell.border = border_right
+
+            #左边框设置
+            for row in tuple(ws['A5:A8']):
+                for cell in row:
+                    cell.border = border_left
+            for row in tuple(ws['A13:A18']):
+                for cell in row:
+                    cell.border = border_left
+            for row in tuple(ws['A23:A25']):
+                for cell in row:
+                    cell.border = border_left
+            for row in tuple(ws['A30:A34']):
+                for cell in row:
+                    cell.border = border_left
+
+            #左下边框设置
+            ws['A9'].border = border_left_bottom
+            ws['A19'].border = border_left_bottom
+            ws['A26'].border = border_left_bottom
+            ws['A35'].border = border_left_bottom
+
+            #右下边框设置
+            ws['D9'].border = border_right_bottom
+            ws['F19'].border = border_right_bottom
+            ws['B26'].border = border_right_bottom
+            ws['C35'].border = border_right_bottom
+
+            #行宽设置
+            for i in range(0,6):
+                # 根据列的数字返回字母
+                col_letter = get_column_letter(i + 1)
+                ws.column_dimensions[col_letter].width = 21
+
+            #全部居中
+            for i in range(2,35):
+                for j in range(0,35):
+                    ws.cell(row=i + 1, column=j + 1).alignment = Alignment(horizontal='center', vertical='center')
+
+            #主体字体设置
+            font = Font(size=11,name='仿宋')
+            for row in tuple(ws['A5:D9']):
+                for cell in row:
+                    cell.font = font
+            for row in tuple(ws['A13:F19']):
+                for cell in row:
+                    cell.font = font
+            for row in tuple(ws['A23:B26']):
+                for cell in row:
+                    cell.font = font
+            for row in tuple(ws['A30:C35']):
+                for cell in row:
+                    cell.font = font
+
+            # 结果输出后将状态返回
+            wb.save(dir_path[0])
+            self.label_signal.setText('保存完毕！')
+
+    #重置输入参数
+    def reset_click(self):
+        self.tableWidget_case1.clearContents()
+        self.lineEdit_P1.clear()
+        self.lineEdit_T1.clear()
+        self.lineEdit_pi.clear()
+        self.lineEdit_rou.clear()
+        self.lineEdit_h.clear()
+        self.lineEdit_W2.clear()
+        self.lineEdit_V1.clear()
+
+        self.lineEdit35_SO21.clear()
+        self.lineEdit35_SO22.clear()
+        self.lineEdit35_SO23.clear()
+        self.lineEdit35_NOx1.clear()
+        self.lineEdit35_NOx2.clear()
+        self.lineEdit35_NOx3.clear()
+        self.lineEdit35_CO1.clear()
+        self.lineEdit35_CO2.clear()
+        self.lineEdit35_CO3.clear()
+        self.lineEdit35_PM1.clear()
+        self.lineEdit35_PM2.clear()
+        self.lineEdit35_PM3.clear()
+
+        self.lineEdit_SO21.clear()
+        self.lineEdit_SO22.clear()
+        self.lineEdit_SO23.clear()
+        self.lineEdit_NOx1.clear()
+        self.lineEdit_NOx2.clear()
+        self.lineEdit_NOx3.clear()
+        self.lineEdit_CO1.clear()
+        self.lineEdit_CO2.clear()
+        self.lineEdit_CO3.clear()
+        self.lineEdit_PM1.clear()
+        self.lineEdit_PM2.clear()
+        self.lineEdit_PM3.clear()
+
+        self.lineEdit_PM_Cd.clear()
+        self.lineEdit_SO2_Cd.clear()
+        self.lineEdit_NOx_Cd.clear()
+        self.lineEdit_CO_Cd.clear()
+
+        self.textEdit_output.clear()
+        self.label_signal.clear()
+
+        self.lineEdit_P2.setText('101.325')
+        self.lineEdit_T2.setText('298.15')
+
+    # 点击关闭按钮时弹出警告框
+    def closeEvent(self, event):  # 函数名固定不可变
+        reply = QtWidgets.QMessageBox.question(self, u'警告', u'确认退出?', QtWidgets.QMessageBox.Yes,QtWidgets.QMessageBox.No)
+        if reply == QtWidgets.QMessageBox.Yes:
+            event.accept()  # 关闭窗口
+        else:
+            event.ignore()  # 忽视点击X事件
+
+
+class Form(QMainWindow):
+    def __init__(self, splash):
+        super(Form, self).__init__()
+        self.resize(800, 600)
+
+        self.splash = splash
+
+        self.load_data()
+
+    def load_data(self):
+        for i in range(10):
+            time.sleep(0.5)
+            self.splash.showMessage(f'加载中...{str(i * 10)}%', Qt.AlignLeft | Qt.AlignBottom, Qt.white)
+
+
+if __name__ =='__main__':
+    app = QApplication(sys.argv)
+    splash = QSplashScreen(QtGui.QPixmap(":/huanbao.png"))# 启动界面图片地址
+    splash.setFont(QFont('微软雅黑',10))
+    splash.show()  # 展示启动图片
+    app.processEvents() # 防止进程卡死
+    form = Form(splash)
+    calculator = CalculatorWindow()
+    splash.finish(form) #显示界面时关闭启动界面图片
+    sys.exit(app.exec_())
+
+
+
